@@ -2,10 +2,6 @@ Crime Mapping System
 ==============================================
 Apply K-means Clustering algorithm identify groups of records as potential crime patterns.
 
-Notes:
-------
-The original datasets are available in XML format located in crime.datasets directory, a post-processed `cms.sql` can be imported to mysql server and used instead.
-
 Setup:
 ------
 
@@ -16,3 +12,16 @@ Setup:
              3.1.2. HTTP_Upload 0.9.1
     4. Adobe AIR Runtime 1.5.x (available at: http://get.adobe.com/air/)
     5. Adobe Flex Builder 3 (to compile and create the Adobe AIR application executable from `cms.fe`
+
+
+Screenshots:
+------------
+![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-fig4-7.png)
+
+![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-samples.png)
+
+![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-fig6-8.png)
+
+![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-appendix-p.png)
+
+![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-k-means-class-diagram-simplified.png)
