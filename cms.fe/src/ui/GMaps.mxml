@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+  <maps:Map xmlns:maps="com.google.maps.*"
+    id="map" mapevent_mapready="onMapReady(event)" width="100%" height="100%" 
+    url="http://localhost"
+    key="ABQIAAAAOxS7Ic3cM__XUYCYpB6_4BT2yXp_ZAY8_ufC3CFXhHIE1NvwkxTx0RNe4hveZ-UD0TAWV1kWdrP-qw"/>
+<mx:Script>
+<![CDATA[
+  import com.google.maps.extras.dragzoomcontrol.DragZoomControl; 
+  include "../../libs/DataLib.as";
+  import mx.events.DragEvent;
+  import mx.events.StateChangeEvent;
+  import mx.events.MoveEvent;
+  import mx.effects.Zoom;
+  import mx.collections.ArrayCollection;
+  import com.google.maps.controls.PositionControlOptions;
+  import com.google.maps.Alpha;
+  import com.google.maps.styles.BevelStyle;
+  import com.google.maps.Color;
+  import com.google.maps.controls.ControlPosition;
+  import com.google.maps.controls.OverviewMapControlOptions;
+  import com.google.maps.controls.MapTypeControl;
+  import com.google.maps.controls.OverviewMapControl;
+  import com.google.maps.controls.ScaleControl;
+  import com.google.maps.controls.PositionControl;
+  import com.google.maps.controls.ZoomControl;
+  import com.google.maps.extras.markermanager.MarkerManager;
+  import com.google.maps.InfoWindowOptions;
+  import com.google.maps.LatLng;
+  import com.google.maps.Map;
+  import com.google.maps.MapEvent;
+  import com.google.maps.MapMoveEvent;
+  import com.google.maps.MapType;
+  import com.google.maps.MapMouseEvent;
+  import com.google.maps.services.ClientGeocoder;
+  import com.google.maps.services.Directions;
+  import com.google.maps.services.DirectionsEvent;
+  import com.google.maps.services.GeocodingEvent;
+  import com.google.maps.services.GeocodingResponse;
+  import com.google.maps.services.Placemark;
+  import com.google.maps.overlays.Marker;
+  import com.google.maps.styles.FillStyle;
+  import com.google.maps.overlays.MarkerOptions;
+  import com.google.maps.styles.StrokeStyle;
+  import mx.rpc.events.ResultEvent;
+  import mx.rpc.events.FaultEvent;
+  import mx.controls.Alert;
+  
+  [Bindable]public static var zoomLevel:Number;
+  [Bindable]public static var mapCenter:LatLng;
+  private var mgrOptions = {borderPadding:50, maxZoom:15, trackMarkers:true};
+  private var geocoder:ClientGeocoder;
+  private var strAddress:String = "Haifa, Israel";
+  //private var 
+  private var markerGroups:Object = {"ALL_OTHER_OFFENSES":[],
+                                     "BURGLARY":[],
+                                     "DESTRUCTION_OF_PROPERTY":[],
+                                     "DISORDERLY_CONDUCT":[],
+                                     "DRIVING_UNDER_THE_INFLUENCE":[],
+                                     "DRUG":[],
+                                     "DRUNKENNESS":[],
+                                     "EMBEZZLEMENT":[],
+                                     "KIDNAPPING":[],
+                                     "LARCENY":[],
+                                     "LIQUOR_LAW_VIOLATIONS":[],
+                                     "MOTOR_VEHICLE_THEFT":[],
+                                     "PEEPING_TOM":[],
+                                     "ROBBERY":[]};
+                                     
+  
+  /** Called specifically for the go options in HeaderBar */
+  public function goToAddressHandler(event:TextEvent):void {
+    //geocoder.geocode(event.text);
+    /* Since we can't use the default geocoder, build specific one here ;)
+       the following section serve only for the central location */
+    var geocoder:ClientGeocoder = new ClientGeocoder();
+    geocoder.addEventListener(GeocodingEvent.GEOCODING_SUCCESS, function(event:GeocodingEvent):void {
+      var result:Placemark = GeocodingResponse(event.response).placemarks[0];
+      map.setCenter(result.point, 13, MapType.HYBRID_MAP_TYPE);      
+      var markerOptions:MarkerOptions = new MarkerOptions({
+        strokeStyle: {
+          color: 0x987654
+        },
+        fillStyle: {
+          color: 0x000000
+        },
+        label: "You",
+        labelFormat: {
+          bold: true,
+          color: 0xFFFFFF
+        },
+        tooltip: result.address,
+        radius: 24,
+        hasShadow: true,
+        clickable: false,
+        draggable: true,
+        gravity: 0.5,
+        distanceScaling: false
+        }
+      );
+      markerOptions.iconAlignment = MarkerOptions.ALIGN_HORIZONTAL_CENTER;
+      markerOptions.iconOffset = new Point(2, 2);
+      var marker:Marker = new Marker(result.point, markerOptions);
+      map.addOverlay(marker);      
+    }); // end of anonymous function
+      
+    geocoder.addEventListener(GeocodingEvent.GEOCODING_FAILURE, geocoderGeocodingFailure);
+    
+    if (event.text.length) 
+      geocoder.geocode(event.text);
+  }
+  
+  
+  public function plotDatasetHandler(ac:ArrayCollection, mapId:String):void {
+    //Alert.show("plotDatasetHandler called-> ac.length: " + ac.length + "mapId: " + mapId);
+    var markerOpt:MarkerOptions = new MarkerOptions({
+          strokeStyle: {
+            thickness: 0.1,
+            alpha: 0.5,
+            color:Color.BLACK,
+            pixelHinting: false
+          },
+            fillStyle: {
+            color: 0xFF766A,
+            alpha: 1.0
+          },
+            labelFormat: {
+            font: "_sans",
+            size: 12,
+            color: Color.BLACK
+          },
+          gravity: 0.8,
+          radius: 7,
+          hasShadow: true,
+          draggable: false,
+          distanceScaling: false
+        });
+  
+    this.plotDatasetHandlerHelper(ac, markerOpt, mapId);
+  }
+  
+  private function plotDatasetHandlerHelper(ac:ArrayCollection, markerOpt:MarkerOptions, mapId:String):void {
+    var i:int = 0;
+    
+    //randomly select element to set as map center
+    var crime:Object = ac.getItemAt(ac.length / 2);
+    var lat:Number = crime.lat;
+    var lon:Number = crime.lon;
+    this.map.setCenter(new LatLng(lat, lon), 10);
+    
+    for each (var crime in ac) {
+      if (mapId == "gmaps")
+        var colors:Object = this.getCrimeTypeColor(crime.UCRCategories);
+      else if (mapId == "gmaps2") {
+        var colors:Object = new Object();
+        colors.fill = COLOR_CLUSTER[crime.cluster];
+      }
+      
+      markerOpt.fillStyle.color = colors["fill"]; 
+      
+      var gisData:LatLng = new LatLng(crime.lat, crime.lon);
+      /*var marker:Marker = this.createMarker(gisData,
+        ((mapId == "gmaps2") ? ("Cluster: " + crime.cluster + "\n\n") : "") +
+        "Categories: " + crime.UCRCategories + "\n\n" +
+        "Type: " + crime.crimeCategory + "\n\n" +
+        "Date: " + crime.startDate + "\n\n" +
+        "Description: " + crime.description);*/
+      
+      var crimeRecord:Object = new Object();
+      crimeRecord['UCRCategories'] = crime.UCRCategories;
+      crimeRecord['type'] = crime.crimeCategory;
+      crimeRecord['business'] = crime.business;
+      crimeRecord['startDate'] = crime.startDate;
+      crimeRecord['description'] = crime.description;
+      crimeRecord['county'] = crime.county;
+      crimeRecord['location'] = crime.location;
+      crimeRecord['city'] = crime.city;
+      crimeRecord['state'] = crime.state;
+      crimeRecord['zip'] = crime.zip;
+      crimeRecord['lat'] = crime.lat;
+      crimeRecord['lon'] = crime.lon;
+      
+      crimeRecord['convictId'] = crime.convictId;
+      crimeRecord['fname'] = crime.fname;
+      crimeRecord['middle'] = crime.middle;
+      crimeRecord['lname'] = crime.lname;
+      crimeRecord['age'] = crime.age;
+      crimeRecord['address'] = crime.address;
+      
+      crimeRecord['suspectId'] = crime.suspectId;
+      crimeRecord['raceId'] = crime.raceId;
+      crimeRecord['weaponId'] = crime.weaponId;
+      
+      if (mapId == 'gmaps2') {
+        crimeRecord['Cluster'] = crime.cluster;
+      }    
+      var marker:Marker = this.createMarker(gisData, crimeRecord);
+  
+      marker.setOptions(markerOpt);
+      //marker.hide();
+      this.categorizeMarkersGroup(crime.UCRCategories, marker);
+      this.map.addOverlay(marker);
+      
+      
+        trace("cluster: " + crimeRecord['Cluster']);
+        trace("convictId" + crimeRecord['convictId']);
+        trace("fname" + crimeRecord['fname']);
+      
+      ++i;
+    }
+  }
+  
+  private function categorizeMarkersGroup(type:String, marker:Marker):void {
+    //FIXME: the problem is that associative array can't accept space for the key!
+    //this.markerGroups[type].push(marker);
+    //type = type.toUpperCase();
+    switch (type) {
+      case ALL_OTHER_OFFENSES:
+        this.markerGroups["ALL_OTHER_OFFENSES"].push(marker);        
+        break;
+      case BURGLARY:
+        this.markerGroups["BURGLARY"].push(marker);
+        break;
+      case DESTRUCTION_OF_PROPERTY:
+        this.markerGroups["DESTRUCTION_OF_PROPERTY"].push(marker);
+        break;
+      case DISORDERLY_CONDUCT:
+        this.markerGroups["DISORDERLY_CONDUCT"].push(marker);
+        break;
+      case DRIVING_UNDER_THE_INFLUENCE:
+        this.markerGroups["DRIVING_UNDER_THE_INFLUENCE"].push(marker);
+        break;
+      case DRUG:
+        this.markerGroups["DRUG"].push(marker);
+        break;
+      case DRUNKENNESS:    
+        this.markerGroups["DRUNKENNESS"].push(marker);
+        break;
+      case EMBEZZLEMENT:
+        this.markerGroups["EMBEZZLEMENT"].push(marker);
+        break;
+      case KIDNAPPING:
+        this.markerGroups["KIDNAPPING"].push(marker);
+        break;
+      case LARCENY:
+        this.markerGroups["LARCENY"].push(marker);
+        break;
+      case LIQUOR_LAW_VIOLATIONS:
+        this.markerGroups["LIQUOR_LAW_VIOLATIONS"].push(marker);
+        break;
+      case MOTOR_VEHICLE_THEFT:
+        this.markerGroups["MOTOR_VEHICLE_THEFT"].push(marker);
+        break;
+      case PEEPING_TOM:
+        this.markerGroups["PEEPING_TOM"].push(marker);
+        break;
+      case ROBBERY:
+        this.markerGroups["ROBBERY"].push(marker);
+        break;        
+      default:
+    }    
+  }
+  
+  /** Helper function for plotDatasetHandler(ac:ArrayCollection) to create
+    * InfoWindowOptions on MouseClick
+    */
+  private function createMarker(gisData:LatLng, markerData:Object):Marker{ 
+    var marker:Marker = new Marker(gisData); 
+    marker.addEventListener(MapMouseEvent.CLICK, function (event:MapMouseEvent):void { 
+      marker.openInfoWindow(
+        new InfoWindowOptions(
+          { customContent: new InfoWindowTabbedComponent(markerData),
+            customOffset: new Point(0, 10),
+            width: 300,
+            height: 160,
+            drawDefaultFrame: true }
+        )
+      ); 
+    }); 
+    return marker; 
+  }
+  
+  /** Helper function for plotDatasetHandler(ac:ArrayCollection) to create
+    * custom color marker
+    */
+  private function getCrimeTypeColor(type:String):Object {
+    var colors:Object = new Object();
+    switch (type) {
+      case ALL_OTHER_OFFENSES:
+        colors.fill = COLOR_ALL_OTHER_OFFENSES;
+        break;
+      case BURGLARY:
+        colors.fill = COLOR_BURGLARY;
+        break;
+      case DESTRUCTION_OF_PROPERTY:
+        colors.fill = COLOR_DESTRUCTION_OF_PROPERTY;
+        break;
+      case DISORDERLY_CONDUCT:
+        colors.fill = COLOR_DISORDERLY_CONDUCT;
+        break;
+      case DRIVING_UNDER_THE_INFLUENCE:
+        colors.fill = COLOR_DRIVING_UNDER_THE_INFLUENCE;
+        break;
+      case DRUG:
+        colors.fill = COLOR_DRUG;
+        break;
+      case DRUNKENNESS:
+        colors.fill = COLOR_DRUNKENNESS;
+        break;
+      case EMBEZZLEMENT:
+        colors.fill = COLOR_EMBEZZLEMENT;
+        break;
+      case KIDNAPPING:
+        colors.fill = COLOR_KIDNAPPING;
+        break;
+      case LARCENY:
+        colors.fill = COLOR_LARCENY;
+        break;
+      case LIQUOR_LAW_VIOLATIONS:
+        colors.fill = COLOR_LIQUOR_LAW_VIOLATIONS;
+        break;
+      case MOTOR_VEHICLE_THEFT:
+        colors.fill = COLOR_MOTOR_VEHICLE_THEFT;
+        break;
+      case PEEPING_TOM:
+        colors.fill = COLOR_PEEPING_TOM;
+        break;
+      case ROBBERY:
+        colors.fill = COLOR_ROBBERY;
+        break;        
+      default:
+    }
+    //trace(colors["stroke"], colors["fill"]);
+    return colors;
+  }
+  
+  //FIXME: currently unused
+  private function geocoderGeocodingSuccess(event:GeocodingEvent):void {
+    var result:Placemark = GeocodingResponse(event.response).placemarks[0];
+    Alert.show(result.point.toString());
+    this.map.setCenter(result.point, 13, MapType.HYBRID_MAP_TYPE);
+    
+    var markerOptions:MarkerOptions = new MarkerOptions({
+      strokeStyle: {
+        color: 0x987654
+      },
+      fillStyle: {
+        color: 0x223344,
+        alpha: 0.8
+      },
+      label: "You",
+      labelFormat: {
+        bold: true
+      },
+      tooltip: result.address,
+      radius: 24,
+      hasShadow: true,
+      clickable: false,
+      draggable: true,
+      gravity: 0.5,
+      distanceScaling: false
+      }
+    );
+    //markerOptions.icon = new purpleIcon();
+    //markerOptions.tooltip = "";
+    markerOptions.iconAlignment = MarkerOptions.ALIGN_HORIZONTAL_CENTER;
+    markerOptions.iconOffset = new Point(2, 2);
+ 
+    var marker:Marker = new Marker(result.point, markerOptions);
+    map.addOverlay(marker);
+  }
+  
+  private function geocoderGeocodingFailure(event:GeocodingEvent):void {
+    Alert.show("Unable to geocode address: " + event.name);
+  }
+  
+  private function onMapClick(event:MapMouseEvent):void {
+  }
+  
+  
+  private function onMapReady(event:Event):void {
+    this.map.enableContinuousZoom();
+    this.map.enableCrosshairs();
+    
+    var myMapTypeControl:MapTypeControl = new MapTypeControl();
+    myMapTypeControl.setControlPosition(new ControlPosition(ControlPosition.ANCHOR_TOP_RIGHT, 16, 85));
+    this.map.addControl(myMapTypeControl);
+    
+    var myZoomControl:ZoomControl = new ZoomControl();
+    myZoomControl.setControlPosition(new ControlPosition(ControlPosition.ANCHOR_TOP_LEFT, 31, 160));    
+    this.map.addControl(myZoomControl);
+    
+    var myPositionControl:PositionControl = new PositionControl();
+    myPositionControl.setControlPosition(new ControlPosition(ControlPosition.ANCHOR_TOP_LEFT, 10, 85));
+    this.map.addControl(myPositionControl);
+    
+    this.map.addControl(new ScaleControl());
+    
+    var myDragZoomControl:DragZoomControl = new DragZoomControl(10, 390, 0xFFFFFF, 0x000000, 1, "click and drag mouse to zoom into area");
+    this.map.addControl(myDragZoomControl);
+    
+    
+    this.map.addControl(new OverviewMapControl(
+      new OverviewMapControlOptions(
+      // Initialization object corresponding to the default set.
+      { size: {
+          x: 200,
+          y: 100
+        },
+        padding: {
+          x: 4,
+          y: 4
+        },
+        controlStyle: {
+          fillStyle: {
+            color: Color.WHITE,
+            alpha: 1.0
+          },
+          strokeStyle: {
+            color: Color.BLACK,
+            alpha: 1.0,
+            thickness: 1.0
+          },
+          bevelStyle: BevelStyle.BEVEL_RAISED,
+          bevelThickness: 2.0,
+          bevelAlpha: 0.6,
+          highlightColor: Color.WHITE,
+          shadowColor: Color.BLACK
+        },
+        navigatorStyle: {
+          fillStyle: {
+            /*color: NAVIGATOR_COLOR,*/
+            alpha: Alpha.PERCENT_20
+          },
+          strokeStyle: {
+            thickness: 2,
+            /*color: NAVIGATOR_COLOR,*/
+            alpha: 1.0
+          }
+        },
+        position: new ControlPosition(ControlPosition.ANCHOR_BOTTOM_RIGHT, 10)
+      }
+      )
+    ));
+
+    //remove the copyright statement due to limited screen space; brute force used to identify index
+    this.map.removeChildAt(3);
+    this.map.enableScrollWheelZoom();
+    this.map.enableContinuousZoom();
+    //new LatLng(32.7938, 35.0282) //israel
+    this.map.setCenter(new LatLng(5.404665167142009, 100.31114062908934), 7, MapType.HYBRID_MAP_TYPE);
+    this.map.addEventListener(MapMouseEvent.CLICK, onMapClick);
+    this.map.addEventListener(MapMoveEvent.MOVE_STEP, syncMapPosition);
+    
+    geocoder = new ClientGeocoder();
+    //geocoder.addEventListener(GeocodingEvent.GEOCODING_SUCCESS, geocoderGeocodingSuccess);
+    geocoder.addEventListener(GeocodingEvent.GEOCODING_FAILURE, geocoderGeocodingFailure);
+    
+    //this.map.addEventListener(MoveEvent.MOVE, syncMapPosition);
+    //this.map.addEventListener(StateChangeEvent.CURRENT_STATE_CHANGING, syncMapPosition);
+    this.map.addEventListener(MapMoveEvent.MOVE_END, syncMapPosition);
+  }
+  
+  private function syncMapPosition(event:MapMoveEvent):void {
+   // Alert.show("moved");
+    GMaps.zoomLevel = map.getZoom();
+    GMaps.mapCenter = map.getCenter();
+
+    /*switch (this.id) {
+      case 'gmaps':    
+        map.setCenter(GMaps.mapCenter, GMaps.zoomLevel);
+        break;
+      case 'gmaps2':
+        map.setCenter(GMaps.mapCenter, GMaps.zoomLevel);
+    }*/ 
+  }
+  
+  private function traceFaultHandler(event:FaultEvent):void {
+    Alert.show(event.message.toString());
+  }
+  
+  private function traceResultHandler(event:ResultEvent):void {
+  }
+  
+  public function toggleGroup(type:String):void {
+    trace(type);
+    for each (var marker in this.markerGroups[type]) {
+      if (marker.isHidden()) {
+        marker.show();
+      } else {
+        marker.hide();
+      }
+    }
+  }
+]]>
+</mx:Script>
+</mx:Canvas>

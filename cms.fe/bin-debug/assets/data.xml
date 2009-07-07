@@ -1,0 +1,38 @@
+<crimes>
+<crime>
+  <crimeCategory>MOTOR VEHICLE THEFT</crimeCategory>
+  <number>2246</number>
+</crime>
+<crime>
+  <crimeCategory>BURGLARY</crimeCategory>
+  <number>1809</number>
+</crime>
+<crime>
+  <crimeCategory>ALL OTHER OFFENSES</crimeCategory>
+  <number>1056</number>
+</crime>
+<crime>
+  <crimeCategory>ROBBERY</crimeCategory>
+  <number>850</number>
+</crime>
+<crime>
+  <crimeCategory>PEEPING TOM</crimeCategory>
+  <number>82</number>
+</crime>
+<crime>
+  <crimeCategory>LARCENY</crimeCategory>
+  <number>122</number>
+</crime>
+<crime>
+  <crimeCategory>DESTRUCTION OF PROPERTY</crimeCategory>
+  <number>28</number>
+</crime>
+<crime>
+  <crimeCategory>BREAKING AND ENTERING</crimeCategory>
+  <number>14</number>
+</crime>
+<crime>
+  <crimeCategory>ARSON</crimeCategory>
+  <number>16</number>
+</crime>
+</crimes>

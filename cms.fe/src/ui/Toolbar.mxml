@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute"
+  showCloseButton="true"
+  title="Tools"
+  close="closeButtonHandler(event);" width="280" height="700"
+  initialize="init();" xmlns:ns1="flexlib.containers.*" show="this.getStates();this.getCounties();">
+
+<mx:Script>
+  <![CDATA[
+  include "../../Libs/DataLib.as";
+  import mx.events.CollectionEvent;
+  import mx.collections.XMLListCollection;
+  import mx.collections.ArrayCollection;
+  import mx.rpc.http.mxml.HTTPService;
+  import mx.rpc.events.ResultEvent;
+  import mx.managers.PopUpManager;
+  import mx.controls.Alert;
+  import mx.utils.ArrayUtil;
+  import mx.utils.ObjectProxy;
+  import mx.events.ItemClickEvent;
+  
+  //public static var visible:Boolean = false;
+  public static var CREATED:Boolean = false;
+  private var winClustersTabularView:WinClustersTabularView;
+  private static var winClusters2DPlotChart:WinClusters2DPlotChart;
+  [Bindable]private var xlcStates:XMLListCollection;
+  [Bindable]private var xlcCounties:XMLListCollection;
+  [Bindable]private var xlcSelectedDataset:XMLListCollection;
+  [Bindable]private var xlcAllDataset:XMLListCollection;
+  [Bindable]private var acSelectedDataset:ArrayCollection;
+  [Bindable]private var acClusteredDataset:ArrayCollection;
+  [Bindable]private var checkedBox:Array = new Array();
+  
+  private function init():void {
+    this.getStates();
+    this.getCounties();
+    
+    //initialize to prevent null pointers exceptions
+    this.chkConvictAge = new CheckBox();
+    this.chkConvictRace = new CheckBox();
+    this.chkConvictWeapon = new CheckBox();
+    this.chkSuspectAge = new CheckBox();
+    this.chkSuspectRace = new CheckBox();
+    this.chkSuspectWeapon = new CheckBox();
+  }
+  
+  private function closeButtonHandler(event:Event):void {
+    visible = false;
+    //PopUpManager.removePopUp(this);
+  }
+  
+  private function getStates():void {
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcStates = new XMLListCollection(xmlData);
+      //Alert.show(xlcStates.toString());
+    });
+    
+    var param:Object = { options: 'getStates' };
+    httpService.send(param);
+  }
+  
+  private function getCounties():void {
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcCounties = new XMLListCollection(xmlData);
+    });
+    
+    var param:Object = { options: 'getCounties' };
+    httpService.send(param);
+  }
+    
+  //FIXME: Currently the checkAll doesn't perform correctly in respone to:
+  // 1. callback on all toggleGroup visibility.
+  // 2. the `markerGroups:Object` on GMaps doesn't fully track on individual visibility;
+  //    current implementation only rely on toggle rather 'real' tracking.
+  //    Thus, if the checkAll called, extra call needed.   
+  private function checkAllHandler(event:Event):void {
+    if (this.chkAll.selected) {
+      this.chkOthers.selected = true;
+      this.chkLarceny.selected = true;
+      this.chkVT.selected = true;
+      this.chkDUTI.selected = true;
+      this.chkDoP.selected = true;
+      this.chkDrunk.selected = true;
+      this.chkDC.selected = true;
+      this.chkDrug.selected = true;
+      this.chkRobbery.selected = true;
+      this.chkLLV.selected = true;
+      this.chkBurglary.selected = true;
+      this.chkKidnap.selected = true;
+      this.chkPeep.selected = true;
+      this.chkEmbezzlement.selected = true;
+      //this.chkBoxToggleHandler(event);
+    } else if (!this.chkAll.selected) {
+      this.chkOthers.selected = false;
+      this.chkLarceny.selected = false;
+      this.chkVT.selected = false;
+      this.chkDUTI.selected = false;
+      this.chkDoP.selected = false;
+      this.chkDrunk.selected = false;
+      this.chkDC.selected = false;
+      this.chkDrug.selected = false;
+      this.chkRobbery.selected = false;
+      this.chkLLV.selected = false;
+      this.chkBurglary.selected = false;
+      this.chkKidnap.selected = false;
+      this.chkPeep.selected = false;
+      this.chkEmbezzlement.selected = false;
+      //this.chkBoxToggleHandler(event);
+    }
+    
+    this.chkBoxToggleHandler(event);
+  }
+  
+  private function clearMarkersClickHandler(event:Event):void {
+    if (event.target == this.btnClearMarkersMap1) {
+      this.parentApplication.richMaps.gmaps.map.clearOverlays();
+    } else if (event.target == this.btnClearMarkersMap2) {
+      this.parentApplication.richMaps.gmaps2.map.clearOverlays();
+    }
+  }
+  
+  private function chkBoxToggleHandler(event:Event):void {
+    //Alert.show("selected: " + event.target.selected);
+    this.checkedBox = new Array();
+
+    if (this.chkOthers.selected)
+      checkedBox.push('ALL OTHER OFFENSES');
+    if (this.chkLarceny.selected)
+      checkedBox.push('LARCENY');
+    if (this.chkVT.selected)
+      checkedBox.push('MOTOR VEHICLE THEFT');
+    if (this.chkDUTI.selected)
+      checkedBox.push('DRIVING UNDER THE INFLUENCE');
+    if (this.chkDoP.selected)
+      checkedBox.push('DESTRUCTION OF PROPERTY');
+    if (this.chkDrunk.selected)
+      checkedBox.push('DRUNKENNESS');
+    if (this.chkDC.selected)
+      checkedBox.push('DISORDERLY CONDUCT');
+    if (this.chkDrug.selected)
+      checkedBox.push('DRUG');
+    if (this.chkRobbery.selected)
+      checkedBox.push('ROBBERY');
+    if (this.chkLLV.selected)
+      checkedBox.push('LIQUOR LAW VIOLATIONS');
+    if (this.chkBurglary.selected)
+      checkedBox.push('BURGLARY');
+    if (this.chkKidnap.selected)
+      checkedBox.push('KIDNAPPING');
+    if (this.chkPeep.selected)
+      checkedBox.push('PEEPING TOM');
+    if (this.chkEmbezzlement.selected)
+      checkedBox.push('EMBEZZLEMENT');
+    
+    this.getPreSelectionTotalOfCrimes(checkedBox);
+  }
+  
+  private function getPreSelectionTotalOfCrimes(arr:Array):void {
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      //Alert.show("result size: " + event.result);
+      lblTotal.text = String(event.result);
+    });
+    
+    //Alert.show(this.cmbGetCounties.selectedItem + ", " + this.cmbGetStates);
+      
+    var param:Object = { options: 'getPreSelectionTotalOfCrimes',
+                         county: this.cmbGetCounties.selectedItem,
+                         state: this.cmbGetStates.selectedItem,
+                         'UCRCategories[]': arr};
+                         
+    if (this.rbBoth.selected) {
+      param['solved'] = 'both';
+    } else if (this.rbSolved.selected) {
+      param['solved'] = 'solved';
+    } else if (this.rbUnsolved.selected) {
+      param['solved'] = 'unsolved';
+    }
+                             
+    httpService.send(param);
+
+    //Alert.show(param.toString());
+    //httpService.send(param);
+  }
+      
+  private function getDataset():void {
+    if (int(this.lblTotal.text) < 1) {
+      Alert.show("Insufficient datasets", "ERROR:");
+      return;
+    }
+    
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    //httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      //var xmlResult:XML = XML(event.result);
+      //var xmlData:XMLList = xmlResult.children();
+      //xlcSelectedDataset = new XMLListCollection(xmlData);
+      //trace("result: " + event.result.CrimeReports.CrimeReport);
+      
+      if (event.result.CrimeReports.CrimeReport is ArrayCollection) {
+        acSelectedDataset = event.result.CrimeReports.CrimeReport;
+      } else if (event.result.CrimeReports.CrimeReport is ObjectProxy) {
+         acSelectedDataset = new ArrayCollection(ArrayUtil.toArray(event.result.CrimeReports.CrimeReport)); 
+      }
+      
+      plotDataset(); 
+    });
+
+    //var param:Object = this.getDatasetSelection();                         
+    var param:Object = { options: 'getDatasets',
+                         county: this.cmbGetCounties.selectedItem,
+                         state: this.cmbGetStates.selectedItem,
+                         'UCRCategories[]': this.checkedBox};
+    //FIXME: PROCEED TO ADD UNSOLVED CRIMES PARAMETERS HERE TO SEND TO SERVER!
+
+    /*if (this.chkUnsolvedCrimes.selected) {
+      param['unsolved'] = 'unsolved';
+    }*/
+    
+    if (this.rbBoth.selected) {
+      param['solved'] = 'both';
+    } else if (this.rbSolved.selected) {
+      param['solved'] = 'solved';
+    } else if (this.rbUnsolved.selected) {
+      param['solved'] = 'unsolved';
+    }
+                             
+    //Alert.show(this.checkedBox.toString());
+    httpService.send(param);
+  }
+  
+  private function plotDataset():void {
+    //this.getDataset();
+    //Alert.show("plotDataset(): acSelectedDataset.length: " + this.acSelectedDataset.length);
+    //Alert.show(this.acSelectedDataset.getItemAt(, 'debug:');
+    this.parentApplication.plotDatasetHandler(this.acSelectedDataset, 'gmaps');
+  }
+  
+  private function plotClusteredDataset():void {
+    this.parentApplication.plotDatasetHandler(this.acClusteredDataset, 'gmaps2');
+  }
+  
+  private function clustering():void {
+    if (int(this.lblTotal.text) < 2) {
+      Alert.show("Insufficient datasets", "ERROR:");
+      return;
+    }
+    
+    if (this.chkClearMarkers.selected) {
+      this.parentApplication.richMaps.gmaps2.map.clearOverlays();
+    }
+    var httpService:HTTPService = new HTTPService();
+    httpService.showBusyCursor = true;
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      
+      if (event.result.CrimeReports.CrimeReport is ArrayCollection) {
+        acClusteredDataset = event.result.CrimeReports.CrimeReport;
+        //trace(XMLList(acClusteredDataset));
+        //parent.winDebugConsole.console.concat(acClusteredDataset.toString());
+      } else if (event.result.CrimeReports.CrimeReport is ObjectProxy) {
+        acClusteredDataset = new ArrayCollection(ArrayUtil.toArray(event.result.CrimeReports.CrimeReport));
+        //trace(XMLList(acClusteredDataset));
+        //parent.winDebugConsole.console.concat(acClusteredDataset.toString()); 
+      }
+      
+      plotClusteredDataset();
+      
+      /*try {
+        acClusteredDataset = event.result.CrimeReports.CrimeReport;
+        plotClusteredDataset();
+      } catch (e:Error) { Alert.show(e.message) }*/
+    });
+
+    //Alert.show("k:" + this.hsliderK.value + "   iterations: " + this.hsliderIterations.value);
+    //var param:Object = this.getDatasetSelection();    
+    var param:Object = { options: 'clustering',
+                         k: this.hsliderK.value,
+                         iterations: this.hsliderIterations.value,
+                         county: this.cmbGetCounties.selectedItem,
+                         state: this.cmbGetStates.selectedItem,
+                         'UCRCategories[]': this.checkedBox,
+                         'clusteringAttrs[]':getClusteringAttrs()};
+
+    /*if (this.chkUnsolvedCrimes.selected) {
+      param['unsolved'] = 'unsolved';
+    }*/
+    if (this.rbBoth.selected) {
+      param['solved'] = 'both';
+    } else if (this.rbSolved.selected) {
+      param['solved'] = 'solved';
+    } else if (this.rbUnsolved.selected) {
+      param['solved'] = 'unsolved';
+    }
+    
+                             
+    trace(param);
+    httpService.send(param);
+  }
+  
+  private function getClusteringAttrs():Array {
+    var attrs:Array = new Array();
+    
+    if (this.chkAddressId.selected) attrs.push('addressId'); 
+    if (this.chkZip.selected) attrs.push('zip');
+    if (this.chkUCRCat.selected) attrs.push('UCRCategoriesId');
+    if (this.chkLatLon.selected) {
+      attrs.push('lat');
+      attrs.push('lon');
+    }
+    if (this.chkConvictAge.selected) attrs.push('convictAge');
+    if (this.chkConvictRace.selected) attrs.push('convictRace');
+    if (this.chkConvictWeapon.selected) attrs.push('convictWeapon');
+    
+    if (this.chkSuspectAge.selected) attrs.push('suspectAge');
+    if (this.chkSuspectRace.selected) attrs.push('suspectRace');
+    if (this.chkSuspectWeapon.selected) attrs.push('suspectWeapon');
+    
+    return attrs;
+  }
+  
+  private function tabularViewHandler(event:Event):void {
+    this.winClustersTabularView = WinClustersTabularView(PopUpManager.createPopUp(this, WinClustersTabularView, false));
+    this.winClustersTabularView.percentHeight = 100;
+    this.winClustersTabularView.setClusteredDataset(this.acClusteredDataset);
+    PopUpManager.centerPopUp(winClustersTabularView);
+
+    //pass acClusteredDataset to the WinClusterTabularView instance
+    //Alert.show("DEBUG", this.acClusteredDataset.toString());
+    
+    //WinClustersTabularViews.visible = true;
+  }
+  
+  private function shading(event:Event):void {
+  	if (event.target == this.hSliderMap1) {
+  		//this.parentApplication.richMaps.gmaps.map.backgroundAlpha = uint(this.hSliderMap1.value/100);
+  		//this.parentApplication.richMaps.gmaps.map.getDisplayObject().opaqueBackground = 0xFF0000;
+  		//this.parentApplication.richMaps.gmaps.map.getDisplayObject().alpha = uint(this.hSliderMap1.value/100);
+  	} else if (event.target == this.hSliderMap2) {
+  		//this.parentApplication.richMaps.gmaps2.map.alpha = uint(this.hSliderMap2.value/100);
+  	}
+  }
+  
+  //private function clickEvt(event:ItemClickEvent):void {}
+  
+  private function cluster2DPlotChartHandler(event):void {
+    //open up tabularViewWin window:
+    if (WinClusters2DPlotChart.visible) {
+      return;
+    }
+    
+    winClusters2DPlotChart = WinClusters2DPlotChart(PopUpManager.createPopUp(this, WinClusters2DPlotChart, false));
+    PopUpManager.centerPopUp(winClusters2DPlotChart);
+    WinClusters2DPlotChart.visible = true;
+  }
+  
+  private function handleSolvedClick(event:ItemClickEvent):void {
+    /*if (event.currentTarget.selectedValue == "rbSolved") {
+      this.cvsSuspect.enabled = false;
+    } else if (event.currentTarget.selectedValue == "rbUnsolved") {
+      this.cvsConvict.enabled = false;
+    }*/
+    if (this.rbBoth.selected) {
+      this.cvsSuspect.enabled = true;
+      this.cvsConvict.enabled = true;
+    } else {    
+      this.cvsSuspect.enabled = this.rbUnsolved.selected;
+      this.cvsConvict.enabled = this.rbSolved.selected;
+    }
+    
+    this.chkBoxToggleHandler(event);
+  }
+   
+  ]]>
+</mx:Script>
+  
+    <mx:Canvas label="" width="100%" height="100%">
+      <mx:CheckBox id="chkAll" label="All" x="172" y="245" selected="false" click="checkAllHandler(event);"/>
+      <mx:CheckBox id="chkOthers" label="All Others Offenses" x="10" y="177" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkLarceny" label="Larceny" x="172" y="154" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkVT" label="Motor Vehicle Theft" x="10" y="155" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkDUTI" label="Driving Under The Influence" x="10" y="222" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkDoP" label="Destruction of Property" x="10" y="245" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkDrunk" label="Drunkenness" x="10" y="89" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkDC" label="Disorderly Conduct" x="10" y="133" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkDrug" label="Drug" x="172" y="89" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkRobbery" label="Robbery" x="172" y="110" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkLLV" label="Liquor Law Violations" x="10" y="199" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkBurglary" label="Burglary" x="172" y="132" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkKidnap" label="Kidnapping" x="172" y="175" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkPeep" label="Peeping Tom" x="172" y="198" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:CheckBox id="chkEmbezzlement" label="Embezzlement" x="10" y="111" selected="false" change="chkBoxToggleHandler(event);"/>
+      <mx:ComboBox id="cmbGetStates" x="67" y="32" dataProvider="{this.xlcStates}"></mx:ComboBox>
+      <mx:ComboBox id="cmbGetCounties" x="67" y="62" dataProvider="{this.xlcCounties}"></mx:ComboBox>
+      <mx:Label x="10" y="34" text="State:"/>
+      <mx:Label x="10" y="64" text="County:"/>
+      <mx:VBox x="0" y="350" width="100%" height="100%">
+      
+        <mx:Accordion width="275" height="100%">
+          <mx:Canvas label="Clustering Setup" width="100%" height="100%">
+            <mx:HSlider id="hsliderK" x="10" y="15" minimum="1" maximum="10" snapInterval="1" labelOffset="1" labels="[1,2,3,4,5,6,7,8,9,10]" width="253" change="{this.lblK.text = this.hsliderK.value.toString()}" allowTrackClick="true" liveDragging="true"/>
+            <mx:HSlider id="hsliderIterations" value="50" x="10" y="65" minimum="1" maximum="100" snapInterval="1" labelOffset="1" labels="[1,20,40,60,80,100]" liveDragging="true" allowTrackClick="true" width="253" change="{this.lblIterations.text = this.hsliderIterations.value.toString()}"/>
+            <mx:Label x="190" y="34" text="K [Clusters]" fontStyle="italic"/>
+            <mx:Label x="203" y="83.5" text="Iterations" fontStyle="italic"/>
+
+            <mx:TabNavigator id="tnClusteringSetup"  width="100%" height="104" y="130">
+                            
+              <mx:Canvas id="cvsCrime" label="Crime">
+                <mx:CheckBox id="chkUCRCat" x="10" y="30" label="UCR Category"/>
+                <mx:CheckBox id="chkZip" x="119" y="29" label="Zip"/>
+                <mx:CheckBox id="chkAddressId" x="10" y="8" label="Address ID"/>
+                <mx:CheckBox id="chkLatLon" x="119" y="6" label="Latitude/Longitude" width="134"/>
+              </mx:Canvas>
+              <!--mx:Canvas label="Crime Attributes" x="131" y="104.5" width="132" height="144.5" borderStyle="solid" backgroundColor="#201F1F" cornerRadius="10" borderThickness="0"-->
+              <mx:Canvas id="cvsConvict" label="Convict">
+                <mx:CheckBox id="chkConvictAge" x="10" y="7" label="Age" initialize="trace('convictAge init')"/>
+                <mx:CheckBox id="chkConvictRace" x="10" y="29" label="Race"/>
+                <mx:CheckBox id="chkConvictWeapon" x="10" y="51" label="Weapon"/>
+              </mx:Canvas>
+              <mx:Canvas id="cvsSuspect" label="Suspect" width="100%" height="100%">
+                <mx:CheckBox id="chkSuspectAge" x="10" y="7" label="Age"/>
+                <mx:CheckBox id="chkSuspectRace" x="10" y="29" label="Race"/>
+                <mx:CheckBox id="chkSuspectWeapon" x="10" y="51" label="Weapon"/>
+              </mx:Canvas>
+                            
+            </mx:TabNavigator>
+            <mx:Label x="10" y="102" text="k:"/>
+            <mx:Label id="lblK" x="25" y="102" text="{this.hsliderK.value.toString()}" width="31"/>
+            <mx:Label x="68" y="102" text="Iterations:"/>
+            <mx:Label id="lblIterations" x="131" y="102" text="{this.hsliderIterations.value.toString()}" width="50"/>
+            <mx:CheckBox id="chkClearMarkers" x="10" y="242" label="Clear Markers" selected="true"/>
+            <mx:Button label="Cluster" x="156" y="241" click="this.clustering()" width="102"/>
+
+          </mx:Canvas>  
+          <mx:Canvas label="Map Preferences" width="100%" height="100%">
+            <mx:TabNavigator id="tn"  width="100%" height="100%">
+              <!-- Define each panel using a VBox container. -->
+              <mx:Canvas label="Datasets Output">
+                  <mx:HSlider id="hSliderMap1" x="10" y="42"
+                    minimum="0" maximum="100" value="100" 
+                    dataTipPlacement="top" 
+                    tickColor="black" 
+                    snapInterval="1" tickInterval="10" 
+                    labels="['0%','100%']" 
+                    allowTrackClick="true" 
+                    liveDragging="true"
+                    change="shading(event);"/>
+                  <mx:Label text="Shade" x="176" y="62.5"/>
+                  <mx:Button id="btnClearMarkersMap1" label="Clear Markers" click="clearMarkersClickHandler(event)" x="10" y="96"/>
+                  <mx:Label x="10" y="10" text="Adjust the Map shade:"/>
+              </mx:Canvas>
+                <mx:Canvas label="Clustering Output">
+                  <mx:HSlider id="hSliderMap2" x="10" y="42"
+                    minimum="0" maximum="100" value="100" 
+                    dataTipPlacement="top" 
+                    tickColor="black" 
+                    snapInterval="1" tickInterval="10" 
+                    labels="['0%','100%']" 
+                    allowTrackClick="true" 
+                    liveDragging="true"
+                    change="shading(event);"/>
+                  <mx:Label x="176" y="62.5" text="Shade"/>
+                  <mx:Button id="btnClearMarkersMap2" x="10" y="96" label="Clear Markers" click="clearMarkersClickHandler(event)"/>
+                  <mx:Button x="121" y="96" label="Tabular View" click="tabularViewHandler(event)"/>
+                  <mx:Button x="10" y="127" label="Plot 2D Chart" click="cluster2DPlotChartHandler(event)"  width="103"/>
+                  <mx:Label x="10" y="10" text="Adjust the Map shade:"/>
+                </mx:Canvas>
+            </mx:TabNavigator>
+            
+          </mx:Canvas>
+        </mx:Accordion>
+      </mx:VBox>
+      <mx:Button label="Plot" x="175" y="320" click="this.getDataset()" width="93"/>
+      <mx:Canvas x="136" y="283" width="132" height="29" backgroundColor="#201F1F" cornerRadius="10" borderStyle="solid" borderThickness="0">
+        <mx:Label x="10" y="7" text="Total:"/>
+        <mx:Label id="lblTotal" x="56" y="7" text="0"/>
+      </mx:Canvas>
+      <mx:ApplicationControlBar x="0" y="0" width="276">
+        <mx:Label text="Dataset Selection"/>
+      </mx:ApplicationControlBar>
+      <mx:HRule x="10" y="274" width="256" height="2"/>
+      <mx:RadioButtonGroup id="rbgSolved" itemClick="handleSolvedClick(event);"/>
+      <mx:RadioButton id="rbSolved" value="rbSolved" x="8" y="301" label="Solved" groupName="rbgSolved"/>
+      <mx:RadioButton id="rbUnsolved" value="rbUnsolved" x="8" y="321" label="Unsolved" groupName="rbgSolved"/>
+      <mx:RadioButton id="rbBoth" value="rbBoth" x="8" y="280" label="Both" groupName="rbgSolved" selected="true"/>
+      <!--mx:CheckBox id="chkUnsolvedCrimes" x="97" y="321" label="Unsolved" change="chkBoxToggleHandler(event);"/-->
+    </mx:Canvas>
+    
+  
+</mx:TitleWindow>

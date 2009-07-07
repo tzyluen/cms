@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow
+  xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  width="650" height="400"
+  showCloseButton="true"
+  title="Clusters Plot Chart"
+  close="closeButtonHandler(event);" creationComplete="init();">
+  <mx:Script>
+    <![CDATA[
+		import mx.managers.PopUpManager;
+    
+    public static var visible:Boolean = false;
+    
+    private function closeButtonHandler(event:Event):void {
+      WinClusters2DPlotChart.visible = false;
+      PopUpManager.removePopUp(this);
+    }
+    
+    private function init():void {
+      //check whether any clustering result
+      //if result NOT available
+      //	Alert NO result available to show
+      //else
+      //	show the result on table
+    }
+    ]]>
+  </mx:Script>
+  <mx:PlotChart x="10" y="10" id="clusters2DPlotChart">
+    <mx:series>
+      <mx:PlotSeries displayName="Series 1" yField=""/>
+    </mx:series>
+  </mx:PlotChart>
+  <mx:Legend dataProvider="{clusters2DPlotChart}" y="10" right="10"/>
+  
+</mx:TitleWindow>

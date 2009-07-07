@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResizableTitleWindow xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  width="650" height="270"
+  showCloseButton="true"
+  title="Clusters Tabular View"
+  close="closeButtonHandler(event);" creationComplete="onLoad();">
+  <mx:Script>
+    <![CDATA[
+    import mx.collections.ArrayCollection;
+    import mx.managers.PopUpManager;
+    import mx.containers.HBox;
+    import mx.containers.Panel;
+    import mx.controls.DataGrid;
+    import mx.containers.Grid;
+    import mx.controls.Alert;
+
+    //public static var visible:Boolean = false;
+    private var acClusteredDataset:ArrayCollection;
+    
+    private function closeButtonHandler(event:Event):void {
+      //WinClustersTabularView.visible = false;
+      PopUpManager.removePopUp(this);
+    }
+    
+    public function setClusteredDataset(acClusteredDataset:ArrayCollection):void {
+      this.acClusteredDataset = acClusteredDataset;
+      //Alert.show("DEBUG", this.acClusteredDataset.toString());
+    }
+    
+    //FIXME: HERE NEVER CALLED WHEN SHOW CALLED FROM THE THIS INSTANCE!!!!
+    private function onLoad():void {
+      //check whether any clustering result
+      //if result NOT available
+      //  Alert NO result available to show
+      //else
+      //  show the result on table
+      //Alert.show("DEBUG: " + this.acClusteredDataset);
+      trace("generate called");
+      if (this.acClusteredDataset.length > 0) {
+        trace("generate called");
+        this.generate(6);
+      } else {
+        Alert.show("Empty cluster!", "ERROR:");
+      }
+    }
+    
+    private function generate(total:int):void {
+      //Change to use ResizableTitleWindow instead
+      //var panel:Panel = new Panel();
+
+      for (var i:int = 0; i < total; ++i) {      
+        var resizableTW:ResizableTitleWindow = new ResizableTitleWindow();
+        resizableTW.id = 'ResizableTW' + i;
+        
+        var dg:DataGrid = new DataGrid();
+        dg.id = 'dgCluster' + i;
+        resizableTW.addChild(dg);
+        
+        this.addChild(resizableTW);
+      }
+    }
+    
+    ]]>
+  </mx:Script>
+</ResizableTitleWindow>

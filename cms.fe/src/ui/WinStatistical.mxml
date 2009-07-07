@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  width="1200"
+  height="700"
+  showCloseButton="true"
+  title="Analytics Data"
+  close="closeButtonHandler(event);"
+  initialize="init();">
+ <mx:Script>
+ <![CDATA[
+  include "../../libs/DataLib.as";
+  import mx.formatters.*;
+  import mx.collections.XMLListCollection;
+  import mx.rpc.events.FaultEvent;
+  import mx.utils.ArrayUtil;
+  import mx.collections.ArrayCollection;
+  import mx.managers.PopUpManager;
+  import mx.rpc.events.ResultEvent;
+  import mx.controls.Alert;
+  import mx.rpc.http.HTTPService;
+  
+  
+  public static var visible:Boolean = false;
+  [Bindable]private var xlcStates:XMLListCollection;
+  [Bindable]private var xlcCounties:XMLListCollection;
+  [Bindable]private var xlcPercentageOfTotalCrime:XMLListCollection;
+  [Bindable]private var xlcNumberOfCrimesPerCategory:XMLListCollection;
+  [Bindable]private var expensesAC:ArrayCollection = new ArrayCollection( [
+      { Month: "Jan", Burglary: 2000, DestructionOfProperty: 1500, DisorderlyConduct: 450,  DrivingUnderTheInfluence: 1000, Drug: 900, Embezzlement: 800, Kidnapping: 700, Larceny: 1500, LiquorLawViolations: 800, MotorVehicleTheft: 700, PeepingTom: 500, Robbery: 300, Theft: 200},
+      { Month: "Feb", Burglary: 1000, DestructionOfProperty: 1200, DisorderlyConduct: 850,  DrivingUnderTheInfluence: 200, Drug: 500, Embezzlement: 800, Kidnapping: 750, Larceny: 150, LiquorLawViolations: 1800, MotorVehicleTheft: 100, PeepingTom: 50, Robbery: 600, Theft: 20},
+      { Month: "Mar", Burglary: 2000, DestructionOfProperty: 1500, DisorderlyConduct: 450,  DrivingUnderTheInfluence: 1000, Drug: 900, Embezzlement: 800, Kidnapping: 700, Larceny: 1500, LiquorLawViolations: 800, MotorVehicleTheft: 700, PeepingTom: 500, Robbery: 300, Theft: 200},
+      { Month: "Apr", Burglary: 2000, DestructionOfProperty: 1500, DisorderlyConduct: 450,  DrivingUnderTheInfluence: 1000, Drug: 900, Embezzlement: 800, Kidnapping: 700, Larceny: 1500, LiquorLawViolations: 800, MotorVehicleTheft: 700, PeepingTom: 500, Robbery: 300, Theft: 200},
+      { Month: "May", Burglary: 2000, DestructionOfProperty: 1500, DisorderlyConduct: 450,  DrivingUnderTheInfluence: 1000, Drug: 900, Embezzlement: 800, Kidnapping: 700, Larceny: 1500, LiquorLawViolations: 800, MotorVehicleTheft: 700, PeepingTom: 500, Robbery: 300, Theft: 200} ]);
+
+
+  [Bindable]private var myAC:ArrayCollection;
+  [Bindable]private var crimeTrendAC:ArrayCollection;
+      
+  private function init():void {
+    this.getStates();
+    this.getCounties();
+  }
+  
+  private function getCounties():void {
+    trace("getCounties called");
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcCounties = new XMLListCollection(xmlData);
+      //Alert.show(xlcCounties.toString());
+    });
+    
+    var param:Object = { options: 'getCounties' };
+    httpService.send(param);
+  }
+
+  private function getStates():void {
+    trace("getStates called");
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcStates = new XMLListCollection(xmlData);
+      //Alert.show(xlcStates.toString());
+    });
+    
+    var param:Object = { options: 'getStates' };
+    httpService.send(param);
+  }
+  
+  public function getPercentageOfTotalCrime():void {
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcPercentageOfTotalCrime = new XMLListCollection(xmlData);
+      //Alert.show(xlcPercentageOfTotalCrime.toString());
+    });
+    
+    var param:Object = { options: 'getPercentageOfTotalCrime',
+                         county: this.cmbCounty.selectedItem,
+                         state: this.cmbState.selectedItem };
+    //Alert.show("county: " + this.cmbCounty.selectedItem);
+    httpService.send(param);
+  }
+    
+  public function getNumberOfCrimesPerCategory():void {
+    var httpService:HTTPService = new HTTPService();
+    httpService.url = "http://localhost/cms/CMSrequestHandler.php";
+    httpService.method = "POST";
+    httpService.resultFormat="e4x";
+    httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+      var xmlResult:XML = XML(event.result);
+      var xmlData:XMLList = xmlResult.children();
+      xlcNumberOfCrimesPerCategory = new XMLListCollection(xmlData);
+      //Alert.show(xlcNumberOfCrimesPerCategory.toString());
+    });
+    
+    var param:Object = { options: 'getNumberOfCrimesPerCategory',
+                         county: this.cmbCounty.selectedItem,
+                         state: this.cmbState.selectedItem };
+    httpService.send(param);    
+  }
+  
+  private function generateStatisticHandler():void {
+    this.getNumberOfCrimesPerCategory();
+    this.getPercentageOfTotalCrime();
+  }
+            
+  private function closeButtonHandler(event:Event):void {
+    WinStatistical.visible = false;
+    PopUpManager.removePopUp(this);
+  }
+  
+  private function requestCrimeDatasetResultHandler(event:ResultEvent):void {
+    //this.acRequestCrimeDatasetFile = event.result.files.file;
+    //Alert.show(event.result.files.file, "debug");
+    //this.crimeTrendAC = 
+  }
+  
+  public function display(
+        data:Object,
+        field:String,
+        index:Number,
+        percentValue:Number):String{
+            return round(percentValue,2) + "%";
+  }
+  
+  // Rounds to 2 places:
+  public function round(num:Number, precision:Number):Number {
+      var result:String;
+      var f:NumberFormatter = new NumberFormatter();
+      f.precision = precision;
+      result = f.format(num);
+      return Number(result);
+  }
+]]>
+</mx:Script>
+
+  <!-- Define custom colors for use as fills in the AreaChart control. -->
+  <mx:SolidColor id="sc1" color="blue" alpha=".3"/>
+  <mx:SolidColor id="sc2" color="red" alpha=".3"/>
+  <mx:SolidColor id="sc3" color="green" alpha=".3"/>
+
+  <!-- Define custom Strokes. -->
+  <mx:Stroke id = "s1" color="blue" weight="2"/>
+  <mx:Stroke id = "s2" color="red" weight="2"/>
+  <mx:Stroke id = "s3" color="green" weight="2"/>
+
+  <mx:ApplicationControlBar width="100%">
+    <mx:Label text="State:"/>
+    <mx:ComboBox id="cmbState" dataProvider="{this.xlcStates}"></mx:ComboBox>
+    <mx:Label text="County:"/>
+    <mx:ComboBox id="cmbCounty" dataProvider="{this.xlcCounties}"></mx:ComboBox>
+    <mx:Button label="Generate" click="this.generateStatisticHandler()"/>
+  </mx:ApplicationControlBar>
+  
+  <mx:Accordion y="35" width="100%" height="100%">  
+    <mx:Canvas label="Statistical Information" width="100%" height="100%">
+      <mx:VDividedBox x="0" y="0" height="100%" width="100%">
+        <mx:HDividedBox height="100%" width="100%">
+        
+          <mx:Panel width="100%" height="100%" layout="absolute" title="Number of Crimes">
+            <!-- Number of Crimes -->
+            <mx:BarChart id="barchart" height="90%" width="100%" dataProvider="{this.xlcNumberOfCrimesPerCategory}"
+                         showDataTips="true">
+              <mx:verticalAxis>
+                <mx:CategoryAxis categoryField="crimeCategory"/>
+              </mx:verticalAxis>        
+              <mx:series>
+                <mx:BarSeries
+                  displayName="Number of Crimes Per Category"
+                  yField="crimeCategory"
+                  xField="number"/>          
+              </mx:series>
+            </mx:BarChart>
+            <!--mx:Legend dataProvider="{barchart}" x="950"/-->
+            <mx:Label text="Number of Crimes" bottom="-0.04878044" horizontalCenter="-1" fontSize="14" width="148.29268" height="23.04878" textAlign="center"/>
+          </mx:Panel>
+          
+          <mx:Panel width="100%" height="100%" layout="absolute" title="Percentage of Total Crimes">
+            <!-- Percentage of Total Crimes -->
+            <mx:VDividedBox x="0" y="0" height="100%" width="100%">
+               <mx:PieChart id="piechart"
+                dataProvider="{this.xlcPercentageOfTotalCrime}"
+                showDataTips="true"
+                height="100%"
+                width="100%" x="0" y="0">
+                <mx:series>
+                  <mx:PieSeries
+                      nameField="crimeCategory"
+                      field="percent"
+                      labelPosition="callout"
+                      labelFunction="display"/>
+                </mx:series>
+               </mx:PieChart>
+              <mx:Legend dataProvider="{piechart}" height="30%" width="100%"/>
+            </mx:VDividedBox>
+          </mx:Panel>     
+        </mx:HDividedBox>
+      </mx:VDividedBox>
+    </mx:Canvas>
+    <mx:Canvas label="Crime Trend" width="100%" height="100%">
+      <mx:LineChart id="linechart" height="100%" width="80%"
+          paddingLeft="5" paddingRight="5" 
+          showDataTips="true" dataProvider="{expensesAC}">            
+          <mx:horizontalAxis>
+            <mx:CategoryAxis categoryField="Month"/>
+          </mx:horizontalAxis>
+          <mx:series>
+            <mx:LineSeries yField="Burglary" form="curve" displayName="Burglary" lineStroke="{s1}"/>
+            <mx:LineSeries yField="DestructionOfProperty" form="curve" displayName="Destruction of Property" lineStroke="{s2}"/>
+            <mx:LineSeries yField="DisorderlyConduct" form="curve" displayName="Disorderly Conduct" lineStroke="{s3}"/>
+            <mx:LineSeries yField="DrivingUnderTheInfluence" form="curve" displayName="Driving Under The Influence" lineStroke="{s1}"/>
+            <mx:LineSeries yField="Drug" form="curve" displayName="Drug" lineStroke="{s2}"/>
+            <mx:LineSeries yField="Embezzlement" form="curve" displayName="Embezzlement" lineStroke="{s3}"/>
+            <mx:LineSeries yField="Kidnapping" form="curve" displayName="Kidnapping" lineStroke="{s3}"/>
+            <mx:LineSeries yField="Larceny" form="curve" displayName="Larceny" lineStroke="{s3}"/>
+            <mx:LineSeries yField="LiquorLawViolations" form="curve" displayName="Liquor Law Violations" lineStroke="{s3}"/>
+            <mx:LineSeries yField="MotorVehicleTheft" form="curve" displayName="Motor Vehicle Theft" lineStroke="{s3}"/>
+            <mx:LineSeries yField="PeepingTom" form="curve" displayName="Peeping Tom" lineStroke="{s3}"/>
+            <mx:LineSeries yField="Robbery" form="curve" displayName="Robbery" lineStroke="{s3}"/>
+            <mx:LineSeries yField="Theft" form="curve" displayName="Theft" lineStroke="{s3}"/>
+          </mx:series>
+      </mx:LineChart>
+      <mx:Legend dataProvider="{linechart}" x="950"/>
+    </mx:Canvas>
+
+  </mx:Accordion>
+      
+</mx:TitleWindow>

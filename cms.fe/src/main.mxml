@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  xmlns:ui="ui.*"
+  initialize="initApp();" name="main">
+  <mx:Style source="style/style.css"/>
+  
+<mx:Script>
+  <![CDATA[
+  import mx.collections.ArrayCollection;
+  import mx.controls.Alert;
+  import mx.controls.CheckBox;
+  import mx.effects.easing.*;
+    
+    
+  public var coordinates:Dictionary = new Dictionary();
+
+  private function initApp():void {
+    this.fullScreen();
+  }
+      
+  /** Automatically stretch according to screen size */
+  private function fullScreen():void {
+    //Cover the whole screen
+    //systemManager.stage.displayState = flash.display.StageDisplayState.FULL_SCREEN_INTERACTIVE;
+    nativeWindow.maximize();
+  }
+  
+  public function goToAddressHandler(event:TextEvent):void {
+    richMaps.gmaps.goToAddressHandler(event);
+    richMaps.gmaps2.goToAddressHandler(event);
+  }
+  
+  public function plotDatasetHandler(ac:ArrayCollection, mapId:String):void {
+    trace("mapId: " + mapId);
+    //Alert.show("length: " + ac.length);
+    if (mapId == "gmaps")
+      richMaps.gmaps.plotDatasetHandler(ac, mapId);
+    else if (mapId == "gmaps2")
+      richMaps.gmaps2.plotDatasetHandler(ac, mapId);
+  }
+  
+  private function toggleLegendHandler(event:Event):void {
+    //this.legend.visible = CheckBox(event.target.chkLegend).selected;
+  }
+  
+//  public function applicationExit():void {
+//    //constructor signature:
+//    //public function Event(type:String, bubbles:Boolean = false, cancelable:Boolean = false)
+//    var exitingEvent:Event = new Event(Event.EXITING, false, true);
+//    NativeApplication.nativeApplication.dispatchEvent(exitingEvent);
+//    if (!exitingEvent.isDefaultPrevented()) {
+//      NativeApplication.nativeApplication.exit();
+//    }
+//  }
+  
+  private function onExiting(exitingEvent:Event):void { 
+    var winClosingEvent:Event; 
+    for each (var win:NativeWindow in NativeApplication.nativeApplication.openedWindows) { 
+        winClosingEvent = new Event(Event.CLOSING,false,true); 
+        win.dispatchEvent(winClosingEvent); 
+        if (!winClosingEvent.isDefaultPrevented()) { 
+            win.close(); 
+        } else { 
+            exitingEvent.preventDefault(); 
+        } 
+    } 
+     
+    if (!exitingEvent.isDefaultPrevented()) { 
+        //perform cleanup 
+    } 
+  }
+    
+  ]]>
+</mx:Script>
+  <ui:RichMaps x="0" y="0" width="100%" height="100%" id="richMaps"/>
+      
+  <mx:Fade id="fadeOut" duration="1000" alphaFrom="1.0" alphaTo="0.0"/>
+  <mx:Fade id="fadeIn" duration="1000" alphaFrom="0.0" alphaTo="1.0"/>
+  <mx:Iris id="irisOut" duration="700" showTarget="true"/>
+  <mx:Iris id="irisIn" duration="700" showTarget="false"/>
+  
+  <ui:HeaderBar id="headerBar" x="0" top="0"
+                goToAddressEvent="goToAddressHandler(event)"
+                exitingEvent="onExiting(event)"/>
+  <!--ui:DraggableLegend id="legend"
+      showEffect="{fadeIn}" hideEffect="{fadeOut}"
+      visible="{this.headerBar.chkLegend.selected}"/-->
+ 
+</mx:WindowedApplication>

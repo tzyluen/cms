@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+    width="100%" height="85"
+    backgroundColor="#020202"
+    alpha="0.9"
+    xmlns:ns1="flexlib.containers.accordionClasses.*"
+    xmlns:ns2="flexlib.controls.*" name="HeaderBar">
+
+<mx:Script>
+  <![CDATA[
+    import mx.events.FlexEvent;
+  import mx.events.ItemClickEvent;
+  import mx.events.CloseEvent;
+  import mx.managers.PopUpManager;
+  import mx.containers.TitleWindow;
+  import flash.geom.Point;
+  import mx.controls.Alert;
+
+  private var point1:Point = new Point();
+  private static var fExplorer:FileExplorer;
+  private static var dbExplorer:DBExplorer;
+  private static var toolbar:Toolbar;
+  private static var winStatistical:WinStatistical;
+  private static var winDebugConsole:WinDebugConsole;
+  private static var legend:DraggableLegend;
+
+  private function showDraggableLegend(event:Event):void {
+    if (DraggableLegend.CREATED) {
+      if (event.target.selected) {
+        legend.visible = true;
+      } else if (!event.target.selected) {
+        legend.visible = false;
+      }
+      return;
+    }
+    
+    legend = DraggableLegend(PopUpManager.createPopUp(this.parent, DraggableLegend, false));
+    //legend.showEffect(this.fadeIn);
+    PopUpManager.centerPopUp(legend);
+    DraggableLegend.CREATED = true;
+    legend.visible = true;
+  }
+
+  private function showWinDebugConsoleWindow():void {
+    if (WinDebugConsole.visible) {
+      return;
+    }
+    
+    winDebugConsole = WinDebugConsole(PopUpManager.createPopUp(this.parent, WinDebugConsole, false));
+    PopUpManager.centerPopUp(winDebugConsole);
+    WinDebugConsole.visible = true;    
+  }
+
+  private function showWinStatisticalWindow():void {
+    if (WinStatistical.visible) {
+      return;
+    }
+    
+    winStatistical = WinStatistical(PopUpManager.createPopUp(this.parent, WinStatistical, false));
+    PopUpManager.centerPopUp(winStatistical);
+    WinStatistical.visible = true;    
+  }
+
+  private function showToolbarWindow():void {
+    if (Toolbar.CREATED) {
+      //PopUpManager.bringToFront(toolbar);
+      toolbar.visible = true;
+      return;
+    }
+    
+    toolbar = Toolbar(PopUpManager.createPopUp(this.parent, Toolbar, false));
+    PopUpManager.centerPopUp(toolbar);
+    Toolbar.CREATED = true;
+  }
+    
+  // Open the TitleWindow container.
+  // Cast the return value of the createPopUp() method
+  // to SimpleTitleWindowExample, the name of the 
+  // component containing the TitleWindow container.
+  private function showLoadXMLFileWindow():void {
+    if (FileExplorer.visible) {
+      return;
+    }
+    
+    fExplorer = FileExplorer(PopUpManager.createPopUp(this.parent, FileExplorer, false));
+    PopUpManager.centerPopUp(fExplorer);
+    FileExplorer.visible = true;
+    // Calculate position of TitleWindow in Application's coordinates.
+    // Position it 25 pixels down and to the right of the Button control.
+    //point1.x=0;
+    //point1.y=0;                
+    //point1=myButton.localToGlobal(point1);
+    //fExplorer.x=point1.x+25;
+    //fExplorer.y=point1.y+25;
+             
+    // Pass a reference to the TextInput control
+    // to the TitleWindow container so that the 
+    // TitleWindow container can return data to the main application.
+    //login.loginName=returnedName;
+  }
+  
+  private function showDBExplorerWindow():void {
+    if (DBExplorer.visible) {
+      return;
+    }
+    
+    dbExplorer = DBExplorer(PopUpManager.createPopUp(this.parent, DBExplorer, false));
+    PopUpManager.centerPopUp(dbExplorer);
+    DBExplorer.visible = true;    
+  }
+  
+  private function goToAddressHandler(event:Event):void {
+    //  Define event object, initialize it, then dispatch it.    
+    var textEvent:TextEvent = new TextEvent("goToAddressEvent");
+    textEvent.text = txtAddress.text;
+    dispatchEvent(textEvent);
+  }
+  
+  private function onExitingHandler(event:Event):void {
+    Alert.show("onExitingHandler");
+    dispatchEvent(new Event("exitingEvent"));
+  }
+  
+  private function clickHandler(event:ItemClickEvent):void {
+    trace(event.index, event.label, event.item);
+    switch (event.index) {
+      case 0: //btnExplorer
+        this.showLoadXMLFileWindow();
+        break;
+      case 1:
+        this.showDBExplorerWindow();
+        break;
+      case 2:
+        this.showWinStatisticalWindow();
+        break;
+      case 3: //btnTool
+        this.showToolbarWindow();
+        break;
+      case 4: //debugConsole
+        this.showWinDebugConsoleWindow();
+        break;
+      default:
+    }
+  }
+    
+  ]]>
+</mx:Script>
+<mx:Metadata>
+  [Event(name="goToAddressEvent", type="flash.events.TextEvent")]
+  [Event(name="exitingEvent")]
+</mx:Metadata>
+
+  <mx:Fade id="fadeOut" duration="1000" alphaFrom="1.0" alphaTo="0.0"/>
+  <mx:Fade id="fadeIn" duration="1000" alphaFrom="0.0" alphaTo="1.0"/>
+
+  <mx:Image x="10" y="7" source="@Embed('assets/icons/logo_black_matte.gif')"/>
+  <mx:Image x="120" y="7" source="@Embed('assets/icons/kdulogo.gif')"/>
+  <mx:TextInput id="txtAddress" x="10" y="52" width="262" enter="goToAddressHandler(event);"/>
+  <mx:Button x="280" y="52" label="Go" click="goToAddressHandler(event);"/>
+  <!--mx:Label x="10" y="42" text="central location"/-->
+  <mx:Array id="iconMenuArray">
+    <mx:Object icon="@Embed('assets/icons/Documents_64.png')" id="btnExplorer"/>
+    <mx:Object icon="@Embed('assets/icons/Database-64x64.png')" id="btnDB"/>
+    <mx:Object icon="@Embed('assets/icons/Column-Chart-64x64.png')" id="btnStatistic"/>
+    <mx:Object icon="@Embed('assets/icons/Utilities_64.png')" id="btnTool"/>
+    <mx:Object icon="@Embed('assets/icons/Console-64.png')" id="btnConsole"/>
+  </mx:Array>
+  <mx:ToggleButtonBar y="9" dataProvider="{this.iconMenuArray}" right="84" itemClick="clickHandler(event);"/>
+  <!--mx:Button id="btnLoad" label="File Explorer" click="showLoadXMLFileWindow();" y="9" right="84"/-->
+  <mx:Button id="btnExit" label="Exit" click="onExitingHandler(event);" y="9" right="10" width="66"/>
+  <mx:CheckBox id="chkLegend" y="40" label="Legend" right="11" change="showDraggableLegend(event)"/>
+    <!--mx:Button x="469" y="9" icon="@Embed('assets/icons/Column-Chart-50x50.png')"/>
+    <mx:Button x="{469+50}" y="9" icon="@Embed('assets/icons/RemoteDB-50x50.png')"/-->
+</mx:Canvas>

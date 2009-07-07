@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResizableTitleWindow xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml"
+  showCloseButton="true"
+  close="closeButtonHandler(event);"
+  xmlns:flexlib="http://code.google.com/p/flexlib/"
+  creationComplete="onCreationComplete(); loadClusters();" title="Clusters Tabular View" width="100%" height="100%">
+  <mx:Script>
+    <![CDATA[
+    import mx.controls.Button;
+    import mx.controls.dataGridClasses.DataGridColumn;
+    
+    import mx.collections.ArrayCollection;
+    import mx.managers.PopUpManager;
+    import mx.events.ItemClickEvent;
+    import flash.utils.getTimer;
+    import flexlib.mdi.containers.MDIWindow;
+    import flexlib.mdi.events.MDIWindowEvent;
+    import flexlib.mdi.effects.MDIEffectsDescriptorBase;
+    import flexlib.mdi.effects.effectsLib.MDILinearEffects;
+    import flexlib.mdi.effects.effectsLib.MDIVistaEffects;      
+    import flexlib.mdi.events.MDIManagerEvent;
+    import mx.rpc.http.mxml.HTTPService;
+    import mx.rpc.events.ResultEvent;
+    import mx.controls.Alert;
+    import mx.controls.DataGrid;
+    import mx.controls.TextArea;
+    import mx.events.CloseEvent;
+    import mx.events.ListEvent; 
+    import mx.utils.ArrayUtil;
+    import mx.utils.ObjectProxy;
+    
+    
+    public static var visible:Boolean = false;
+    private var acClusteredDataset:ArrayCollection;
+    private var initialCentroidValues:ArrayCollection;
+    private var centroidValues:ArrayCollection;
+      
+    private var eventMonitor:TextArea;
+    private var queuedEvent:MDIManagerEvent;
+    private var effectsList:Array;
+    private var stylesList:Array;
+    private var cssURL:String;
+  
+    private var localClusters:ArrayCollection;
+    
+    public function setClusteredDataset(acClusteredDataset:ArrayCollection):void {
+      this.acClusteredDataset = acClusteredDataset;
+    }
+    
+    private function loadClusters():void {
+      mdiCanvas.windowManager.removeAll();
+      localClusters = new ArrayCollection();
+      var max:int = this.acClusteredDataset.getItemAt(this.acClusteredDataset.length - 1).cluster;  //get last element from array
+      
+      //init the array
+      for (var i:int = 0; i <= max; ++i) {
+        localClusters.addItem(new ArrayCollection());
+      }
+      
+      //add the crimes to correspond clusters
+      //trace("max: " + max);
+      for each (var crime in this.acClusteredDataset) {
+        localClusters[crime.cluster].addItem(crime);                
+      }
+      
+      //put the localClusters into separate datagrid:
+      for (var i:int = 0; i < localClusters.length; ++i) {
+        //add instance of MDIWindow to current instance of TitleWindow
+        var win:MDIWindow = this.addWindow();
+        var dg:DataGrid = new DataGrid();
+        dg.id = 'dgCluster' + i;
+        
+        trace("length: " + localClusters.length);
+        dg.dataProvider = localClusters[i];
+        //resortClustersDatagridColumn(dg);
+        win.addChild(dg);
+        
+        //add plot route button
+        var btn:Button = new Button();
+        btn.addEventListener(MouseEvent.CLICK, function(event:MouseEvent):void {
+          //create a new MDIWindow and add google maps component to it
+          var win:RouteMaps = new RouteMaps();
+          //win.width = 350;
+          win.percentWidth = 50;
+          win.percentHeight = 50;
+          win.title = "Criminal Route " + String(event.currentTarget.id);
+          mdiCanvas.windowManager.add(win);
+          trace(event.currentTarget.id);
+
+          win.plotRouteHandler(localClusters[int(event.currentTarget.id)]);
+          //parentApplication.richMaps.gmaps.plotRouteHandler(localClusters[int(event.currentTarget.id)], 'gmaps1');
+        });
+        btn.id = ""+i;
+        btn.label = "Plot Crimes Pattern Route";
+        win.addChild(btn);
+      }  
+    }
+          
+    private function onCreationComplete():void {       
+      // create textfield
+      eventMonitor = new TextArea();
+      eventMonitor.percentWidth = 100;
+      eventMonitor.height = 150;
+            
+      //listen for all window events
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_ADD, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_MINIMIZE, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_RESTORE, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_MAXIMIZE, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_CLOSE, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_FOCUS_START, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_FOCUS_END, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_DRAG_START, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_DRAG, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_DRAG_END, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_RESIZE_START, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_RESIZE, windowEventHandler);
+      mdiCanvas.windowManager.addEventListener(MDIManagerEvent.WINDOW_RESIZE_END, windowEventHandler);
+    }
+      
+    // default event handler
+    private function windowEventHandler(event:Event):void {
+      if (event is MDIManagerEvent) {
+        var mgrEvent:MDIManagerEvent = event as MDIManagerEvent;
+        if (eventMonitor.parent != null) {
+          eventMonitor.text += mgrEvent.window.title + ": " + event.type + "\n";
+          eventMonitor.verticalScrollPosition = eventMonitor.maxVerticalScrollPosition;
+          eventMonitor.validateNow();
+        }
+      }
+    }
+      
+      
+    // called when the Alert window is closed
+    // if the user said yes, we execute the default behavior of playing an effect
+    // and then removing the window by sending the stored event to
+    // the appropriately named executeDefaultBehavior() method
+    private function handleAlertResponse(event:CloseEvent):void {
+      if (event.detail == mx.controls.Alert.YES) {
+        mdiCanvas.windowManager.executeDefaultBehavior(queuedEvent);
+      }
+    }
+    
+    private function addWindow():MDIWindow {
+      var win:MDIWindow = new MDIWindow();
+      win.width = 350;
+      win.title = "Cluster " + String(mdiCanvas.windowManager.windowList.length);
+      mdiCanvas.windowManager.add(win);
+      
+      return win;
+    }
+          
+    private function closeButtonHandler(event:Event):void {
+      WinStatistical.visible = false;
+      PopUpManager.removePopUp(this);
+    }
+    
+    private function getInitialCentroid():void {
+      var httpService:HTTPService = new HTTPService();
+      httpService.showBusyCursor = true;
+      httpService.url = "http://localhost/cms/log/initialCentroidValues.xml";
+     
+      httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+
+        if (event.result.InitialCentroids.centroid is ArrayCollection) {
+          initialCentroidValues = event.result.InitialCentroids.centroid;
+        } else if (event.result.InitialCentroids.centroid is ObjectProxy) {
+          initialCentroidValues = new ArrayCollection(ArrayUtil.toArray(event.result.InitialCentroids.centroid)); 
+        }
+        
+        var win:MDIWindow = new MDIWindow();
+        win.width = 350;
+        win.title = "Initial Centroid Values";
+        mdiCanvas.windowManager.add(win);
+        
+        var dg:DataGrid = new DataGrid();
+        /*var dgColumnsArray:Array = dg.columns;
+        dgColumnsArray.push(new DataGridColumn(""));*/
+        
+        dg.percentHeight = 100;
+        dg.percentWidth = 90;
+        dg.id = 'dgInitialCentroidValues';
+        dg.dataProvider = initialCentroidValues;
+        
+        win.addChild(dg);
+      });
+      httpService.send();      
+    }
+    
+    private function getCentroid():void {
+      var httpService:HTTPService = new HTTPService();
+      httpService.showBusyCursor = true;
+      httpService.url = "http://localhost/cms/log/centroidValues.xml";
+      
+      httpService.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+        
+        trace("generated:");
+        if (event.result.iterations.iteration is ArrayCollection) {
+          centroidValues = event.result.iterations.iteration;
+        } else if (event.result.iterations.iteration is ObjectProxy) {
+          centroidValues = new ArrayCollection(ArrayUtil.toArray(event.result.iterations.iteration)); 
+        }
+        
+        var win:MDIWindow = new MDIWindow();
+        win.width = 350;
+        win.title = "Centroid Values";
+        mdiCanvas.windowManager.add(win);
+        
+        var dg:DataGrid = new DataGrid();
+        /*var dgColumnsArray:Array = dg.columns;
+        dgColumnsArray.push(new DataGridColumn(""));*/
+        
+        dg.percentHeight = 100;
+        dg.percentWidth = 90;
+        dg.id = 'dgCentroidValues';
+        dg.dataProvider = centroidValues;
+        
+        win.addChild(dg);
+      });
+      httpService.send();
+    }
+    
+    //FIXME: throws null object reference!!!
+    private function resortClustersDatagridColumn(dg:DataGrid):void {
+      var array:Array = dg.columns;
+      var newOrderArray:Array = new Array();
+      
+      for (var i:int=0; i<array.length; ++i) {
+        var dgc:DataGridColumn = array[i] as DataGridColumn;
+        if (dgc.dataField=="raceId")
+          newOrderArray[1] = dgc;
+        else if (dgc.dataField=="weaponId")
+          newOrderArray[2] = dgc;
+      }
+      dg.columns = newOrderArray;
+      dg.validateNow();
+    }
+    ]]>
+  </mx:Script>
+  
+    <mx:VBox id="vbox" width="100%" height="100%">
+  
+    <mx:ApplicationControlBar dock="true" width="100%" height="50" verticalAlign="middle">
+      <mx:Button label="Reload" click="loadClusters()" />
+      <mx:Button label="Cascade" click="mdiCanvas.windowManager.cascade()" />
+      <mx:Button label="Tile" click="mdiCanvas.windowManager.tile(false, Number(tileGap.text))" />
+      <mx:Button label="Tile + Fill Space" click="mdiCanvas.windowManager.tile(true, Number(tileGap.text))" />
+      <mx:VRule height="35" />
+      <mx:Label text="Tile Gap" />
+      <mx:TextInput id="tileGap" text="10" width="30" textAlign="center" />
+      <mx:VRule height="35" />
+      <mx:Button label="Centroid Value" click="getCentroid()" />
+      <mx:Button label="Initial Centroid Value" click="getInitialCentroid()" />
+    </mx:ApplicationControlBar>
+    
+    
+    <flexlib:MDICanvas id="mdiCanvas" horizontalScrollPolicy="off" verticalScrollPolicy="off"
+      width="100%" height="100%" backgroundColor="#FFFFFF" backgroundAlpha="0">
+      <!--flexlib:MDIWindow id="win1"
+        title="Window 1 has a really really long title to show support for truncation"
+        x="30" y="30" width="400" height="200" />
+      <flexlib:MDIWindow id="win2"
+        title="Window 2"
+        x="450" y="30" width="250" height="300" /-->
+    </flexlib:MDICanvas>
+  </mx:VBox>
+
+</ResizableTitleWindow>

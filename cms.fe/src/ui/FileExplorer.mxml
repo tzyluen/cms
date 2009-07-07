@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  width="1200"
+  height="700"
+  showCloseButton="true"
+  title="File Explorer"
+  close="closeButtonHandler(event);" creationComplete="init();">
+<mx:Script>
+  <![CDATA[
+  import mx.rpc.events.ResultEvent;
+  import mx.collections.ArrayCollection;
+  import mx.collections.HierarchicalData;  
+  import flash.filesystem.File;
+  import flash.filesystem.FileStream;
+  import flash.net.FileReference;
+  import mx.events.ListEvent;
+  import mx.controls.Alert;
+  import mx.managers.PopUpManager;
+  import mx.core.ScrollPolicy;
+  
+  public static var visible:Boolean = false;
+  private var uploadFileRef:FileReference;    //object ref for native window file uploader
+  [Bindable]private var homeDir:File = File.userDirectory;
+  [Bindable]private var crimeXMLList:XMLList;
+  [Bindable]private var crimeAC:ArrayCollection;
+  [Bindable]private var crimeFile:File;       //file object ref for selected item in tree
+  
+  private function init():void {
+    uploadFileRef = new FileReference();
+    uploadFileRef.addEventListener(Event.SELECT, selectUploadFileHandler);
+    uploadFileRef.addEventListener(Event.COMPLETE, completeSelectUploadFileHandler);
+  }
+    
+  private function closeButtonHandler(event:Event):void {
+    FileExplorer.visible = false;
+    PopUpManager.removePopUp(this);
+  }
+  
+  private function parseXMLFileHandler(event:ListEvent):void {
+    var file:File = File(tree.selectedItem);
+    this.crimeFile = file;
+    //Alert.show("parseXMLFileHandler: " + file.name);
+    if (file.isDirectory) {
+      return;
+    }
+    var fileStream:FileStream = new FileStream();
+    fileStream.open(file, FileMode.READ);
+    this.crimeXMLList = XMLList(fileStream.readUTFBytes(fileStream.bytesAvailable));
+    //Alert.show(String(this.crimeXML));
+    fileStream.close();
+    
+    this.preProcessingCrimeData();    
+  }
+  
+  private function preProcessingCrimeData():void {
+    var v:ArrayCollection = new ArrayCollection();
+    trace("preProcessingCrimeData()");
+    for each (var node in this.crimeXMLList..CrimeReport) {
+      var o:Object = {file:node.file,
+                      ucrcategories:node.urccrime.UCRCategories,
+                      ucrcategories_id:node.urccrime.UCRCategories.@id,
+                      type:node.catagory.crime,
+                      business:node.bussiness,
+                      county:node.county,
+                      date:node.startDate,
+                      address_id:node.Address.@id,
+                      location:node.Address.location,
+                      city:node.Address.city,
+                      state:node.Address.state,
+                      zip:node.Address.zip,
+                      lat:node.Address.point.lon,
+                      lon:node.Address.point.lat,
+                      desc:node.description,
+                      arrested_id:node.Arrested.@id,
+                      convictFName:node.Arrested.firstName,
+                      convictMName:node.Arrested.middleName,
+                      convictLName:node.Arrested.lastName,
+                      convictAge:node.Arrested.age,
+                      convictAddress:node.Arrested.address};
+      v.addItem(o);
+    }
+    
+    this.crimeAC = v;
+        
+    //FIXED the AdvancedDataGrid default undocumented behavior on NOT UPDATE bindable data!
+    var hd:HierarchicalData = new HierarchicalData();
+    hd.source = this.crimeAC;
+    this.crimeADG.dataProvider = hd;
+  }
+  
+  private function plotDataset():void {
+    this.parentApplication.plotDatasetHandler(this.crimeAC);
+  }
+  
+  private function uploadDataset():void {
+    //Invoke web service methods
+    //this.uploadDatasetWS.datasetUploadHandler(this.crimeXMLList); //NOT applicable anymore
+    try {
+      //this will dispatch event: Event.SELECT; and invoke the 
+      var success:Boolean = this.uploadFileRef.browse();
+    } catch (error:Error) {
+      Alert.show(error.message, "Unable to browse for files.");
+    }     
+  }
+  
+  private function datasetUploadResultHandler(event:ResultEvent):void {
+    Alert.show(event.message.body.toString(), 'Result');
+  }
+  
+  private function selectUploadFileHandler(event:Event):void {
+    var request:URLRequest = new URLRequest("http://localhost/cms/uploadFileHandler.php");
+    request.method = URLRequestMethod.POST;
+
+    try {
+      this.uploadFileRef.upload(request, "crimeDatasetFile");
+    } catch (error:Error) {
+      Alert.show(error.message, "Unable to upload file");
+    }
+  }
+  
+  private function completeSelectUploadFileHandler(event:Event):void {
+    Alert.show("File uploaded.");
+  }
+  
+  ]]>
+</mx:Script>
+  
+  <mx:HDividedBox width="100%" height="100%" top="10" left="5">
+      <mx:FileSystemTree id="tree"  
+          width="200" height="100%" 
+          directory="{this.homeDir}" 
+          enumerationMode="directoriesFirst" 
+          change="parseXMLFileHandler(event);"/>
+      <mx:AdvancedDataGrid id="crimeADG"
+          designViewDataType="tree"
+          width="100%" height="100%"
+          horizontalScrollPolicy="{ScrollPolicy.AUTO}" fontWeight="bold" color="#000000">
+         <mx:dataProvider>
+            <mx:HierarchicalData source="{this.crimeAC}"/>
+         </mx:dataProvider>
+          <mx:columns>
+              <!--mx:AdvancedDataGridColumn headerText="" width="50"/-->
+              <!--mx:AdvancedDataGridColumn dataField="file" headerText="File"/-->
+              <mx:AdvancedDataGridColumn dataField="ucrcategories" headerText="UCRCategories"/>
+              <mx:AdvancedDataGridColumn dataField="ucrcategories_id" headerText="UCRCategories ID"/>
+              <mx:AdvancedDataGridColumn dataField="type" headerText="Crime Type"/>
+              <mx:AdvancedDataGridColumn dataField="business" headerText="Business"/>
+              <mx:AdvancedDataGridColumn dataField="county" headerText="County"/>
+              <mx:AdvancedDataGridColumn dataField="address_id" headerText="Address ID"/>
+              <mx:AdvancedDataGridColumn dataField="date" headerText="Date"/>
+              <mx:AdvancedDataGridColumn dataField="location" headerText="Location"/>
+              <mx:AdvancedDataGridColumn dataField="city" headerText="City"/>
+              <mx:AdvancedDataGridColumn dataField="state" headerText="State"/>
+              <mx:AdvancedDataGridColumn dataField="zip" headerText="Zip"/>
+              <mx:AdvancedDataGridColumn dataField="lat" headerText="Latitude"/>
+              <mx:AdvancedDataGridColumn dataField="lon" headerText="Longitude"/>
+              <mx:AdvancedDataGridColumn dataField="arrested_id" headerText="Arrested ID"/>
+              <mx:AdvancedDataGridColumn dataField="convictFName" headerText="Convict F. Name"/>
+              <mx:AdvancedDataGridColumn dataField="convictMName" headerText="Convict M. Name"/>
+              <mx:AdvancedDataGridColumn dataField="convictLName" headerText="Convict L. Name"/>
+              <mx:AdvancedDataGridColumn dataField="convictAge" headerText="Convict Age"/>
+              <mx:AdvancedDataGridColumn dataField="convictAddress" headerText="Convict Address"/>
+              <!--mx:AdvancedDataGridColumn dataField="desc" headerText="Description"/-->
+          </mx:columns>
+      </mx:AdvancedDataGrid>
+  </mx:HDividedBox>
+  <mx:ControlBar horizontalAlign="right">
+    <mx:Label id="lblCrimeRecords" text="{this.crimeAC.length}"/>
+    <mx:Button id="btnSelect" label="Plot" click="this.plotDataset();"/>
+    <mx:Button id="btnUpload" label="Upload" click="this.uploadDataset();"/>
+  </mx:ControlBar>
+</mx:TitleWindow>

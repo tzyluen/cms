@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="240" height="530" title="Legend">
+  <mx:Script>
+    <![CDATA[
+      public static var CREATED:Boolean = false;
+    ]]>
+  </mx:Script>
+  <mx:TabNavigator id="tn"  width="100%" height="100%">
+    <mx:Canvas label="Crime Categories">
+      <mx:Image x="20" y="20" source="assets/icons/AO_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="25" text="All Others Offenses"/>
+      <mx:Image x="20" y="{20+32}" source="assets/icons/BU_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+32}" text="Burglary"/>
+      <mx:Image x="20" y="{20+(32*2)}" source="assets/icons/DP_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*2)}" text="Destruction of Property"/>
+      <mx:Image x="20" y="{20+(32*3)}" source="assets/icons/DC_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*3)}" text="Disorderly Conduct"/>
+      <mx:Image x="20" y="{20+(32*4)}" source="assets/icons/DI_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*4)}" text="Driving Under the Influence"/>
+      <mx:Image x="20" y="{20+(32*5)}" source="assets/icons/DR_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*5)}" text="Drug"/>
+      <mx:Image x="20" y="{20+(32*6)}" source="assets/icons/DK_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*6)}" text="Drunkenness"/>
+      <mx:Image x="20" y="{20+(32*7)}" source="assets/icons/EM_032.png" scaleContent="true" autoLoad="true"/>
+      <mx:Label x="{20+32+10}" y="{25+(32*7)}" text="Embezzlement"/>
+      <mx:Image x="20" y="{20+(32*8)}" source="assets/icons/KI_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*8)}" text="Kidnapping"/>
+      <mx:Image x="20" y="{20+(32*9)}" source="assets/icons/LA_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*9)}" text="Larceny"/>
+      <mx:Image x="20" y="{20+(32*10)}" source="assets/icons/LV_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*10)}" text="Liquor Law Violations"/>
+      <mx:Image x="20" y="{20+(32*11)}" source="assets/icons/MT_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*11)}" text="Motor Vehicle Theft"/>
+      <mx:Image x="20" y="{20+(32*12)}" source="assets/icons/PT_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*12)}" text="Peeping Tom"/>
+      <mx:Image x="20" y="{20+(32*13)}" source="assets/icons/RO_032.png" scaleContent="true" autoLoad="true"/>    
+      <mx:Label x="{20+32+10}" y="{25+(32*13)}" text="Roberry"/>
+    </mx:Canvas>
+    <!--mx:Canvas label="Clustering">
+      
+    </mx:Canvas-->
+  </mx:TabNavigator>
+</mx:TitleWindow>

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow
+  xmlns:mx="http://www.adobe.com/2006/mxml"
+  layout="absolute"
+  width="650" height="270"
+  showCloseButton="true"
+  title="Dataset Explorer"
+  close="closeButtonHandler(event);" creationComplete="init();">
+<mx:Script>
+  <![CDATA[
+    import mx.collections.ArrayCollection;
+    import mx.collections.XMLListCollection;
+    import mx.rpc.events.ResultEvent;
+    import mx.managers.PopUpManager;
+    import mx.controls.Alert;
+    
+    public static var visible:Boolean = false;
+    //[Bindable]private var acTfiles:ArrayCollection = new ArrayCollection();
+    private var uploadFileRef:FileReference;    //object ref for native window file uploader
+    [Bindable]private var acTfiles:XMLListCollection = new XMLListCollection();
+    [Bindable]private var tcrimesSize:String;
+    
+    
+    private function init():void {
+      this.requestTfiles.send();
+      this.requestTcrimesSize.send();
+      
+      this.uploadFileRef = new FileReference();
+      this.uploadFileRef.addEventListener(Event.SELECT, selectUploadFileHandler);
+      this.uploadFileRef.addEventListener(Event.COMPLETE, completeSelectUploadFileHandler);
+    }
+
+    private function selectUploadFileHandler(event:Event):void {
+      var request:URLRequest = new URLRequest("http://localhost/cms/uploadFileHandler.php");
+      request.method = URLRequestMethod.POST;
+  
+      try {
+        this.uploadFileRef.upload(request, "crimeDatasetFile");
+      } catch (error:Error) {
+        Alert.show(error.message, "Unable to upload file");
+      }
+    }
+  
+    private function completeSelectUploadFileHandler(event:Event):void {
+      Alert.show("File uploaded.");
+      this.requestTfiles.send();
+    }
+    
+    private function closeButtonHandler(event:Event):void {
+      DBExplorer.visible = false;
+      PopUpManager.removePopUp(this);
+    }
+    
+    private function requestTfilesResultHandler(event:ResultEvent):void {
+      //this.acTfiles = XMLListCollection(event.result);
+      var xmlResult:XML = XML(event.result);
+       
+      trace(xmlResult.toXMLString());  //to verify you have your data 
+      var xmlData:XMLList = xmlResult.children();  //or whatever expression give you the row nodes you want 
+      trace(xmlData.toXMLString());  //to verify your expression 
+      this.acTfiles = new XMLListCollection(xmlData);
+      this.lblTotalFiles.text = this.acTfiles.length.toString();
+    }
+    
+    private function processFileImportationResultHandler(event:Event):void {
+    }
+    
+    private function processFileDeletionResultHandler(event:ResultEvent):void {
+      this.requestTfiles.send();
+    }
+    
+    private function addCrimeDatasetFileToDBHandler(event:Event):void {
+      try {
+        this.processFileImportation.send();
+        //grid select item
+        //get a reference to the file
+        //invoke a method on server to request process the dataset importation
+      } catch (error:Error) {
+        Alert.show(error.message, "Error:");
+      }
+    }
+    
+    private function delCrimeDatasetFileFromDBHandler(event:Event):void {
+      try {
+        this.processFileDeletion.send();
+      } catch (error:Error) {
+        Alert.show(error.message, "Error:");
+      }
+    }
+    
+    private function requestTcrimesSizeResultHandler(event:ResultEvent):void {
+      this.tcrimesSize = String(event.result);
+      this.lblTotalRecords.text = this.tcrimesSize;
+    }
+
+    private function uploadDataset():void {
+      try {
+        //this will dispatch event: Event.SELECT; and invoke the 
+        var success:Boolean = this.uploadFileRef.browse();
+      } catch (error:Error) {
+        Alert.show(error.message, "Unable to browse for files.");
+      }     
+    }
+  ]]>
+</mx:Script>
+  <mx:HTTPService id="requestTfiles"
+      url="http://localhost/cms/CMSrequestHandler.php"
+      result="requestTfilesResultHandler(event)"
+      fault="Alert.show(event.fault.faultString, 'Error')"
+      method="POST"
+      resultFormat="e4x">
+      <mx:request xmlns="">
+        <options>requestTfiles</options>
+      </mx:request>
+  </mx:HTTPService>
+
+  <mx:HTTPService id="requestTcrimesSize"
+      url="http://localhost/cms/CMSrequestHandler.php"
+      result="requestTcrimesSizeResultHandler(event)"
+      fault="Alert.show(event.fault.faultString, 'Error')"
+      method="POST" resultFormat="text">
+      <mx:request xmlns="">
+        <options>requestTcrimesSize</options>
+      </mx:request>
+  </mx:HTTPService>
+
+  
+  <mx:HTTPService id="processFileImportation"
+      url="http://localhost/cms/CMSrequestHandler.php"
+      result="processFileImportationResultHandler(event)"
+      fault="Alert.show(event.fault.faultString, 'Error')"
+      method="POST">
+      <mx:request xmlns="">
+        <options>processFileImportation</options>
+        <fname>{this.dgCrimeFile.selectedItem.name}</fname>
+      </mx:request>
+  </mx:HTTPService>
+  
+  <mx:HTTPService id="processFileDeletion"
+      url="http://localhost/cms/CMSrequestHandler.php"
+      result="processFileDeletionResultHandler(event)"
+      fault="Alert.show(event.fault.faultString, 'Error')"
+      method="POST">
+      <mx:request xmlns="">
+        <options>processFileDeletion</options>
+        <fname>{this.dgCrimeFile.selectedItem.name}</fname>
+      </mx:request>
+  </mx:HTTPService>
+
+  
+  <mx:DataGrid id="dgCrimeFile" x="10" y="45" dataProvider="{this.acTfiles}" width="402">
+    <mx:columns>
+      <mx:DataGridColumn headerText="File name" dataField="name"/>
+      <mx:DataGridColumn headerText="Added Date" dataField="adddate" width="100"/>
+      <mx:DataGridColumn headerText="DB" dataField="crimestable" width="50"/>
+    </mx:columns>
+  </mx:DataGrid>
+  <mx:HRule x="10" y="36" width="400"/>
+  <mx:Label x="10" y="10" text="Uploaded Files"/>
+  <mx:Canvas x="420" y="36" width="216" height="72" backgroundColor="#201F1F" cornerRadius="10" borderStyle="solid" alpha="1.0" borderThickness="0">
+    <mx:Label x="10" y="10" text="Total file(s):"/>
+    <mx:Label id="lblTotalFiles" x="169" y="10" text="0"/>
+    <mx:Label x="10" y="36" text="Total crime records in DB:"/>
+    <mx:Label id="lblTotalRecords" x="169" y="36" text="0"/>
+  </mx:Canvas>
+  <mx:ApplicationControlBar x="10" y="185" width="402" horizontalAlign="right">
+    <mx:Button id="btnUpload" label="Upload" click="this.uploadDataset();"/>
+    <mx:Button id="btnAdd" label="Import" width="65" click="this.addCrimeDatasetFileToDBHandler(event);"/>
+    <mx:Button id="btnDel" label="Delete" click="this.delCrimeDatasetFileFromDBHandler(event);"/>
+  </mx:ApplicationControlBar>
+  
+</mx:TitleWindow>
