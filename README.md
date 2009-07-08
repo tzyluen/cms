@@ -16,12 +16,12 @@ Setup:
 
 Screenshots:
 ------------
-![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-fig4-7.png)
+![alt tag](https://raw.github.com/tzyluen/cms/blob/master/img/cms-fig4-7.png)
 
-![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-samples.png)
+![alt tag](https://raw.github.com/tzyluen/cms/blob/master/img/cms-samples.png)
 
-![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-fig6-8.png)
+![alt tag](https://raw.github.com/tzyluen/cms/blob/master/img/cms-fig6-8.png)
 
-![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-appendix-p.png)
+![alt tag](https://raw.github.com/tzyluen/cms/blob/master/img/cms-appendix-p.png)
 
-![alt tag](https://github.com/tzyluen/cms/blob/master/img/cms-k-means-class-diagram-simplified.png)
+![alt tag](https://raw.github.com/tzyluen/cms/blob/master/img/cms-k-means-class-diagram-simplified.png)
